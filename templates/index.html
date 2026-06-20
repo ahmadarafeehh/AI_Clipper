@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Groq Shorts Clipper</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1d24;
+    --accent: #6c5ce7;
+    --accent2: #00d2a0;
+    --text: #e7e9ee;
+    --muted: #8a8f9c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .wrap { max-width: 640px; width: 100%; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  p.sub { color: var(--muted); margin-top: 0; margin-bottom: 28px; }
+  .card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid #262a33;
+  }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
+  input[type="text"], select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #2c313c;
+    background: #11141a;
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-bottom: 18px;
+  }
+  input[type="text"]:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .toggle-row span { font-size: 0.95rem; }
+  .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #2c313c; border-radius: 999px; transition: .2s;
+  }
+  .slider:before {
+    content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+    background: white; border-radius: 50%; transition: .2s;
+  }
+  input:checked + .slider { background: var(--accent); }
+  input:checked + .slider:before { transform: translateX(20px); }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #5b4bd6; }
+
+  #status { display: none; }
+  #stage { font-weight: 600; margin-bottom: 8px; }
+  #log {
+    background: #11141a;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    max-height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .results { display: none; margin-top: 18px; }
+  .clip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: #11141a;
+    border-radius: 10px;
+    margin-bottom: 10px;
+  }
+  .clip .hook { font-size: 0.9rem; color: var(--text); }
+  .clip a {
+    color: var(--accent2);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .error { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 Groq Shorts Clipper</h1>
+  <p class="sub">Paste a YouTube link, pick your options, get vertical clips.</p>
+
+  <div class="card">
+    <label for="url">YouTube URL</label>
+    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=...">
+
+    <label for="length">Clip length</label>
+    <select id="length"></select>
+
+    <label for="num_clips">Number of clips</label>
+    <select id="num_clips">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+
+    <div class="toggle-row">
+      <span>Add hook text overlay</span>
+      <label class="switch">
+        <input type="checkbox" id="add_hook" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span>Add burned-in captions</span>
+      <label class="switch">
+        <input type="checkbox" id="add_captions" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span>Vertical 9:16 output</span>
+      <label class="switch">
+        <input type="checkbox" id="vertical" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <button id="startBtn">Generate Clips</button>
+  </div>
+
+  <div class="card" id="status">
+    <div id="stage">Starting...</div>
+    <div id="log"></div>
+  </div>
+
+  <div class="card results" id="results"></div>
+</div>
+
+<script>
+  const lengthSelect = document.getElementById('length');
+  for (let s = 15; s <= 60; s += 5) {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s + ' seconds';
+    if (s === 30) opt.selected = true;
+    lengthSelect.appendChild(opt);
+  }
+
+  const startBtn = document.getElementById('startBtn');
+  const statusBox = document.getElementById('status');
+  const stageEl = document.getElementById('stage');
+  const logEl = document.getElementById('log');
+  const resultsBox = document.getElementById('results');
+
+  let pollTimer = null;
+
+  startBtn.addEventListener('click', async () => {
+    const url = document.getElementById('url').value.trim();
+    if (!url) { alert('Please paste a YouTube URL.'); return; }
+
+    startBtn.disabled = true;
+    statusBox.style.display = 'block';
+    resultsBox.style.display = 'none';
+    resultsBox.innerHTML = '';
+    logEl.textContent = '';
+    stageEl.textContent = 'Starting...';
+
+    const payload = {
+      url,
+      clip_length: parseInt(document.getElementById('length').value, 10),
+      num_clips: parseInt(document.getElementById('num_clips').value, 10),
+      add_hook: document.getElementById('add_hook').checked,
+      add_captions: document.getElementById('add_captions').checked,
+      vertical: document.getElementById('vertical').checked,
+    };
+
+    const res = await fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      stageEl.textContent = 'Error';
+      logEl.innerHTML = `<span class="error">${data.error}</span>`;
+      startBtn.disabled = false;
+      return;
+    }
+    poll(data.job_id);
+  });
+
+  function poll(jobId) {
+    pollTimer = setInterval(async () => {
+      const res = await fetch(`/api/status/${jobId}`);
+      const job = await res.json();
+
+      stageEl.textContent = 'Stage: ' + job.stage;
+      logEl.textContent = job.log.join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+
+      if (job.status === 'done') {
+        clearInterval(pollTimer);
+        startBtn.disabled = false;
+        renderResults(job.results);
+      } else if (job.status === 'error') {
+        clearInterval(pollTimer);
+        startBtn.disabled = false;
+        logEl.innerHTML += `\n<span class="error">ERROR: ${job.error}</span>`;
+      }
+    }, 1500);
+  }
+
+  function renderResults(results) {
+    resultsBox.style.display = 'block';
+    resultsBox.innerHTML = '<h3 style="margin-top:0;">Done! Your clips:</h3>';
+    results.forEach((r, i) => {
+      const div = document.createElement('div');
+      div.className = 'clip';
+      div.innerHTML = `
+        <span class="hook">#${i + 1} — "${r.hook}"</span>
+        <a href="/output/${r.filename}" download>Download</a>
+      `;
+      resultsBox.appendChild(div);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+.env
+work/
+output/
+downloads/
+__pycache__/
+*.pyc
+.DS_Store
