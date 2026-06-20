@@ -45,14 +45,10 @@ VERTICAL_SIZE = (1080, 1920)
 
 # --- Captions (burned-in subtitles) ---
 # NOTE: captions are rendered via ffmpeg's "ass" filter, which uses libass.
-# On Windows, libass resolves fonts by NAME via DirectWrite (not fontconfig),
-# so font="Arial Black" works fine here even though the same name fails for
-# drawtext below. Leave CAPTION_FONT_FILE = None unless you have a custom
-# .ttf in fonts/ whose internal font NAME you've verified (the filename's
-# stem is used as the lookup name, which only works if it matches exactly).
+# CAPTION_FONT_FILE is set further down, after FONTS_DIR is defined in the
+# Paths section - it needs that variable to exist first.
 CAPTION_WORDS_PER_CARD = 4       # how many words shown on screen at once
-CAPTION_FONT = "Arial Black"     # resolved by name via DirectWrite/fontconfig
-CAPTION_FONT_FILE = str(FONTS_DIR / "ArchivoBlack-Regular.ttf")       # e.g. "fonts/Montserrat-ExtraBold.ttf" - overrides CAPTION_FONT if set
+CAPTION_FONT = "Arial Black"     # fallback name if CAPTION_FONT_FILE is None
 CAPTION_FONT_SIZE = 78
 CAPTION_COLOR = "&H00FFFFFF"        # ASS BGR hex, AABBGGRR-ish: this is opaque white
 CAPTION_HIGHLIGHT_COLOR = "&H0000D7FF"  # opaque gold/yellow (highlighted word)
@@ -61,23 +57,12 @@ CAPTION_MARGIN_V = 260           # distance from bottom, in px (PlayRes space)
 MAX_TRANSCRIPT_CHARS = 20000
 
 # --- Hook text overlay ---
-# NOTE: the hook text is rendered via ffmpeg's "drawtext" filter, which
-# resolves fonts via fontconfig on this Windows ffmpeg build. fontconfig
-# is unconfigured by default on Windows ("Cannot load default config file"),
-# so font="Arial Black" by NAME fails here even though it's fine for captions.
-# The fix is to point HOOK_FONT_FILE directly at a .ttf file path - this
-# uses drawtext's "fontfile=" option instead, which bypasses fontconfig
-# entirely. Point this at any system font or a .ttf dropped in fonts/.
-#
-# HOOK_FONT_FILE is now ALSO required for accurate text wrapping: hook.py
-# loads it with Pillow to measure the real pixel width of each line before
-# handing it to ffmpeg, instead of guessing. (The old guess-based heuristic
-# is what caused hook lines to overflow the frame and get clipped on both
-# edges - e.g. "Are you an under achiever?" rendering as "re you an under
-# achieve" because the line was wider than the video and got centered
-# half off-screen.)
-HOOK_FONT = "Arial Black"
-HOOK_FONT_FILE = str(FONTS_DIR / "ArchivoBlack-Regular.ttf")   # bypasses broken fontconfig lookup for drawtext AND is used for width measurement
+# NOTE: HOOK_FONT_FILE is set further down, after FONTS_DIR is defined in
+# the Paths section - same reason as CAPTION_FONT_FILE above. It bypasses
+# fontconfig entirely (font lookup by name is unreliable across platforms)
+# and is also used by hook.py + Pillow to measure exact text width for
+# wrapping, instead of guessing.
+HOOK_FONT = "Arial Black"        # fallback name if HOOK_FONT_FILE is None
 HOOK_FONT_SIZE = 64              # starting size; auto-shrinks down to HOOK_MIN_FONT_SIZE if a hook needs more than HOOK_MAX_LINES to fit
 HOOK_MIN_FONT_SIZE = 40          # floor for the auto-shrink - won't go smaller than this even if a hook is very long
 HOOK_MAX_LINES = 3               # wrap past this many lines and the font starts shrinking instead
@@ -95,3 +80,8 @@ FONTS_DIR = BASE_DIR / "fonts"
 
 for d in (DOWNLOADS_DIR, WORK_DIR, OUTPUT_DIR, FONTS_DIR):
     d.mkdir(exist_ok=True)
+
+# These two depend on FONTS_DIR above, which is why they live down here
+# instead of next to the other CAPTION_*/HOOK_* settings further up.
+HOOK_FONT_FILE = str(FONTS_DIR / "ArchivoBlack-Regular.ttf")
+CAPTION_FONT_FILE = str(FONTS_DIR / "ArchivoBlack-Regular.ttf")
