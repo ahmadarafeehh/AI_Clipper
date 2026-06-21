@@ -26,7 +26,7 @@ def _writable_cookiefile():
     return writable
 
 
-def _base_ydl_opts(use_pot: bool = True) -> dict:
+def _base_ydl_opts(use_pot: bool = True, use_cookies: bool = False) -> dict:
     """
     Shared yt-dlp options.
 
@@ -39,11 +39,15 @@ def _base_ydl_opts(use_pot: bool = True) -> dict:
        credential and doesn't expire the way a cookie jar does. Enabled by
        setting the BGUTIL_POT_BASE_URL env var to the sidecar's URL.
 
-    2. Cookies (optional, additive) - only needed for content that
-       genuinely requires a logged-in session: age-restricted, private, or
-       members-only videos. Most clip-source content (podcasts, interviews,
-       talks) doesn't need this. Kept purely as a fallback for those edge
-       cases - it's no longer required for the common case.
+    2. Cookies - OFF by default now. A stale/expired cookie file doesn't
+       just "do nothing" - yt-dlp treats its mere presence as "this is a
+       logged-in session", validates it, finds it's rotated/expired, and
+       YouTube returns LOGIN_REQUIRED instead of the normal anonymous
+       response. That's worse than having no cookies at all. Cookies are
+       only attached when use_cookies=True, which download_video() only
+       does as an explicit second attempt if the clean PO-token-only
+       attempt fails - covering genuinely private/age-restricted videos
+       without poisoning the common case.
     """
     opts = {
         # Capped at 720p - the free Render instance only has 512MB RAM, and
@@ -87,13 +91,14 @@ def _base_ydl_opts(use_pot: bool = True) -> dict:
             flush=True,
         )
 
-    cookiefile = _writable_cookiefile()
-    if cookiefile:
-        opts["cookiefile"] = str(cookiefile)
-        print(
-            f"[downloader] Also using cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})",
-            flush=True,
-        )
+    if use_cookies:
+        cookiefile = _writable_cookiefile()
+        if cookiefile:
+            opts["cookiefile"] = str(cookiefile)
+            print(
+                f"[downloader] Retrying with cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})",
+                flush=True,
+            )
 
     return opts
 
@@ -102,15 +107,18 @@ def download_video(url: str) -> Path:
     """
     Download best-quality mp4 (video+audio merged) and return its path.
 
-    Tries the PO Token provider first. If that request fails for any
-    reason (sidecar briefly down, network hiccup, etc.), retries once
-    without it rather than failing the whole job outright - cookies alone,
-    or a clean unauthenticated request, still succeed for plenty of videos.
+    Two attempts:
+      1. PO Token only, no cookies - the clean path, works for the vast
+         majority of public videos (podcasts, interviews, talks, etc.).
+      2. Only if (1) fails: PO Token + cookies, in case the video genuinely
+         needs a logged-in session (private/members-only/age-restricted).
+         This attempt is skipped automatically if no cookie file exists.
+    Cookies are never sent on the first attempt - see _base_ydl_opts for why.
     """
     outtmpl = str(config.DOWNLOADS_DIR / "%(id)s.%(ext)s")
 
-    def _attempt(use_pot: bool):
-        ydl_opts = _base_ydl_opts(use_pot=use_pot)
+    def _attempt(use_pot: bool, use_cookies: bool):
+        ydl_opts = _base_ydl_opts(use_pot=use_pot, use_cookies=use_cookies)
         ydl_opts["outtmpl"] = outtmpl
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
@@ -122,12 +130,12 @@ def download_video(url: str) -> Path:
             return path
 
     try:
-        path = _attempt(use_pot=True)
+        path = _attempt(use_pot=True, use_cookies=False)
     except yt_dlp.utils.DownloadError as e:
-        if not os.getenv("BGUTIL_POT_BASE_URL"):
-            raise  # PO token wasn't even configured, no point retrying
-        print(f"[downloader] First attempt failed ({e}); retrying without PO Token provider...", flush=True)
-        path = _attempt(use_pot=False)
+        if not Path(config.YOUTUBE_COOKIE_FILE).exists():
+            raise  # no cookies to fall back to, no point retrying
+        print(f"[downloader] First attempt failed ({e}); retrying with cookies...", flush=True)
+        path = _attempt(use_pot=True, use_cookies=True)
 
     if not path.exists():
         raise FileNotFoundError(f"yt-dlp reported success but file not found: {path}")
