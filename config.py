@@ -15,6 +15,15 @@ if not GROQ_API_KEY:
         "from https://console.groq.com/keys"
     )
 
+# Path to a YouTube cookies file (Netscape format), used to make yt-dlp
+# look like an authenticated browser session. YouTube increasingly demands
+# this for traffic from cloud/datacenter IPs (Render included) - without
+# it, downloads fail with "Sign in to confirm you're not a bot". On Render
+# this is mounted automatically by their "Secret Files" feature at
+# /etc/secrets/<filename>; locally that path just won't exist, so this
+# has no effect on local runs.
+YOUTUBE_COOKIE_FILE = os.getenv("YOUTUBE_COOKIE_FILE", "/etc/secrets/youtube_cookies.txt")
+
 # --- Groq models ---
 # LLM used to read the transcript and choose clips + write hooks.
 # Good general picks on Groq right now: "openai/gpt-oss-120b" (best reasoning,
