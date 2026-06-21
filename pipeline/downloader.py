@@ -29,7 +29,13 @@ def download_video(url: str) -> Path:
     """Download best-quality mp4 (video+audio merged) and return its path."""
     outtmpl = str(config.DOWNLOADS_DIR / "%(id)s.%(ext)s")
     ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        # bestvideo*+bestaudio/best is yt-dlp's own internal default - it
+        # doesn't hard-require an mp4/m4a container, since YouTube doesn't
+        # always serve that combo for every video (webm/vp9 only, for some
+        # videos/resolutions). merge_output_format below still forces the
+        # FINAL output to .mp4 regardless of what source streams it picks -
+        # ffmpeg remuxes/transcodes during the merge either way.
+        "format": "bestvideo*+bestaudio/best",
         "outtmpl": outtmpl,
         "merge_output_format": "mp4",
         "quiet": True,
