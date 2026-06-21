@@ -31,21 +31,30 @@ def download_video(url: str) -> Path:
     ydl_opts = {
         # bestvideo*+bestaudio/best is yt-dlp's own internal default - it
         # doesn't hard-require an mp4/m4a container, since YouTube doesn't
-        # always serve that combo for every video (webm/vp9 only, for some
-        # videos/resolutions). merge_output_format below still forces the
-        # FINAL output to .mp4 regardless of what source streams it picks -
-        # ffmpeg remuxes/transcodes during the merge either way.
+        # always serve that combo for every video. merge_output_format
+        # below still forces the FINAL output to .mp4 regardless of what
+        # source streams it picks - ffmpeg remuxes/transcodes during the
+        # merge either way.
         "format": "bestvideo*+bestaudio/best",
         "outtmpl": outtmpl,
         "merge_output_format": "mp4",
-        "quiet": True,
-        "no_warnings": True,
+        # TEMPORARY: verbose=True streams yt-dlp's full internal debug log
+        # (which client it tries, cookie loading, format filtering) into
+        # Render's Logs tab, since we don't have Shell access on the Free
+        # plan to run yt-dlp -v directly. Flip these back to True/True/False
+        # once the format issue is diagnosed and fixed - verbose output is
+        # noisy and not meant to run permanently in production.
+        "quiet": False,
+        "no_warnings": False,
+        "verbose": True,
         "noplaylist": True,
     }
     cookiefile = _writable_cookiefile()
     if cookiefile:
         ydl_opts["cookiefile"] = str(cookiefile)
         print(f"[downloader] Using cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})")
+    else:
+        print("[downloader] No cookie file found - downloading without authentication")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         # extract_info with download=True returns the final, post-processed info dict
