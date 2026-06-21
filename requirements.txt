@@ -1,6 +1,6 @@
 flask
 gunicorn
-yt-dlp>=2024.12.0
+yt-dlp>=2025.6.0
 groq>=0.13.0
 google-genai>=0.3.0
 python-dotenv>=1.0.0
