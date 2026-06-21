@@ -79,10 +79,15 @@ def _base_ydl_opts(use_pot: bool = True, use_cookies: bool = False) -> dict:
 
     pot_base_url = os.getenv("BGUTIL_POT_BASE_URL")
     if use_pot and pot_base_url:
+        # yt-dlp's own docs: pair a PO Token provider with the "mweb"
+        # client specifically. The auto-picked defaults (android_vr,
+        # web_safari) have been getting flagged outright by YouTube
+        # regardless of PO token - forcing mweb is the documented fix.
         opts["extractor_args"] = {
+            "youtube": {"player_client": ["mweb"]},
             "youtubepot-bgutilhttp": {"base_url": [pot_base_url]},
         }
-        print(f"[downloader] Using PO Token provider at {pot_base_url}", flush=True)
+        print(f"[downloader] Using PO Token provider at {pot_base_url} (mweb client)", flush=True)
     elif use_pot:
         print(
             "[downloader] No BGUTIL_POT_BASE_URL set - downloads may hit "
