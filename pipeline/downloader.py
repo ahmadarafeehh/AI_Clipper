@@ -29,21 +29,20 @@ def download_video(url: str) -> Path:
     """Download best-quality mp4 (video+audio merged) and return its path."""
     outtmpl = str(config.DOWNLOADS_DIR / "%(id)s.%(ext)s")
     ydl_opts = {
-        # bestvideo*+bestaudio/best is yt-dlp's own internal default - it
-        # doesn't hard-require an mp4/m4a container, since YouTube doesn't
-        # always serve that combo for every video. merge_output_format
-        # below still forces the FINAL output to .mp4 regardless of what
-        # source streams it picks - ffmpeg remuxes/transcodes during the
-        # merge either way.
         "format": "bestvideo*+bestaudio/best",
         "outtmpl": outtmpl,
         "merge_output_format": "mp4",
-        # TEMPORARY: verbose=True streams yt-dlp's full internal debug log
-        # (which client it tries, cookie loading, format filtering) into
-        # Render's Logs tab, since we don't have Shell access on the Free
-        # plan to run yt-dlp -v directly. Flip these back to True/True/False
-        # once the format issue is diagnosed and fixed - verbose output is
-        # noisy and not meant to run permanently in production.
+        # Lets yt-dlp download its EJS challenge-solver script from GitHub
+        # at runtime, needed to decrypt YouTube's "n challenge" signatures.
+        # Without this, yt-dlp can list formats but can't resolve real
+        # download URLs for any of them - which is exactly the "Requested
+        # format is not available" / "Only images are available" failure
+        # we were hitting even with cookies and Deno both working.
+        "remote_components": {"ejs:github"},
+        # TEMPORARY: verbose debug logging, since Shell isn't available on
+        # the Free plan. Flip quiet/no_warnings back to True and remove
+        # verbose once this is confirmed working - this output is noisy
+        # and not meant to run permanently in production.
         "quiet": False,
         "no_warnings": False,
         "verbose": True,
@@ -57,9 +56,7 @@ def download_video(url: str) -> Path:
         print("[downloader] No cookie file found - downloading without authentication")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
-        # extract_info with download=True returns the final, post-processed info dict
         path = Path(ydl.prepare_filename(info))
-        # merge_output_format may change extension to .mp4 after postprocessing
         if not path.exists():
             path = path.with_suffix(".mp4")
     if not path.exists():
