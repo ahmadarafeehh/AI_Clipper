@@ -58,28 +58,42 @@ def _base_ydl_opts(use_pot: bool = True) -> dict:
         # signatures and actually resolve real format URLs. Confirmed
         # working - keep this.
         "remote_components": {"ejs:github"},
-        "quiet": True,
-        "no_warnings": True,
         "noplaylist": True,
     }
+
+    # DEBUG SWITCH: set YTDLP_DEBUG=1 as an env var on the main service to
+    # turn this on. It makes yt-dlp print everything it's doing, including
+    # a line like "[debug] [youtube] [pot] PO Token Providers: bgutil:http-
+    # ..." which confirms whether the plugin is even loaded and whether it
+    # reached the sidecar. Turn it back off once things work - it's noisy.
+    debug = os.getenv("YTDLP_DEBUG", "").lower() in ("1", "true", "yes")
+    if debug:
+        opts["verbose"] = True
+    else:
+        opts["quiet"] = True
+        opts["no_warnings"] = True
 
     pot_base_url = os.getenv("BGUTIL_POT_BASE_URL")
     if use_pot and pot_base_url:
         opts["extractor_args"] = {
             "youtubepot-bgutilhttp": {"base_url": [pot_base_url]},
         }
-        print(f"[downloader] Using PO Token provider at {pot_base_url}")
+        print(f"[downloader] Using PO Token provider at {pot_base_url}", flush=True)
     elif use_pot:
         print(
             "[downloader] No BGUTIL_POT_BASE_URL set - downloads may hit "
             "YouTube's bot check on datacenter IPs. Deploy the "
-            "bgutil-ytdlp-pot-provider sidecar and set that env var."
+            "bgutil-ytdlp-pot-provider sidecar and set that env var.",
+            flush=True,
         )
 
     cookiefile = _writable_cookiefile()
     if cookiefile:
         opts["cookiefile"] = str(cookiefile)
-        print(f"[downloader] Also using cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})")
+        print(
+            f"[downloader] Also using cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})",
+            flush=True,
+        )
 
     return opts
 
@@ -112,12 +126,12 @@ def download_video(url: str) -> Path:
     except yt_dlp.utils.DownloadError as e:
         if not os.getenv("BGUTIL_POT_BASE_URL"):
             raise  # PO token wasn't even configured, no point retrying
-        print(f"[downloader] First attempt failed ({e}); retrying without PO Token provider...")
+        print(f"[downloader] First attempt failed ({e}); retrying without PO Token provider...", flush=True)
         path = _attempt(use_pot=False)
 
     if not path.exists():
         raise FileNotFoundError(f"yt-dlp reported success but file not found: {path}")
-    print(f"[downloader] Saved video -> {path}")
+    print(f"[downloader] Saved video -> {path}", flush=True)
     return path
 
 
