@@ -1,9 +1,28 @@
 """
 Step 1: Download the source video from YouTube.
 """
+import shutil
 from pathlib import Path
 import yt_dlp
 import config
+
+
+def _writable_cookiefile():
+    """
+    yt-dlp updates the cookie jar in place after requests (YouTube rotates
+    some session cookies during use). config.YOUTUBE_COOKIE_FILE points at
+    Render's Secret File mount (/etc/secrets/...), which is READ-ONLY -
+    yt-dlp crashes trying to write back to it. Copy it once into WORK_DIR
+    (which IS writable) and hand yt-dlp that copy instead. Locally, where
+    the secret file doesn't exist, this returns None and cookies are
+    skipped entirely, same as before.
+    """
+    source = Path(config.YOUTUBE_COOKIE_FILE)
+    if not source.exists():
+        return None
+    writable = config.WORK_DIR / "youtube_cookies_writable.txt"
+    shutil.copy(source, writable)
+    return writable
 
 
 def download_video(url: str) -> Path:
@@ -17,13 +36,10 @@ def download_video(url: str) -> Path:
         "no_warnings": True,
         "noplaylist": True,
     }
-    # On cloud hosts (Render included), YouTube's bot-detection flags the
-    # datacenter IP and demands authentication. Feeding it a cookies file
-    # from a real logged-in session works around this. Locally this file
-    # won't exist, so cookiefile is simply omitted - no behavior change.
-    if Path(config.YOUTUBE_COOKIE_FILE).exists():
-        ydl_opts["cookiefile"] = config.YOUTUBE_COOKIE_FILE
-        print(f"[downloader] Using cookies from {config.YOUTUBE_COOKIE_FILE}")
+    cookiefile = _writable_cookiefile()
+    if cookiefile:
+        ydl_opts["cookiefile"] = str(cookiefile)
+        print(f"[downloader] Using cookies from {cookiefile} (writable copy of {config.YOUTUBE_COOKIE_FILE})")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         # extract_info with download=True returns the final, post-processed info dict
