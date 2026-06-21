@@ -29,23 +29,21 @@ def download_video(url: str) -> Path:
     """Download best-quality mp4 (video+audio merged) and return its path."""
     outtmpl = str(config.DOWNLOADS_DIR / "%(id)s.%(ext)s")
     ydl_opts = {
-        "format": "bestvideo*+bestaudio/best",
+        # Capped at 720p - the free Render instance only has 512MB RAM, and
+        # pulling in a full 1080p source (400-800MB) on top of ffmpeg's
+        # memory use during cutting/reframing/captioning was crashing the
+        # container mid-job. 720p is plenty of source quality for short
+        # vertical social clips and uses a fraction of the memory/disk.
+        "format": "bestvideo*[height<=720]+bestaudio/best[height<=720]",
         "outtmpl": outtmpl,
         "merge_output_format": "mp4",
-        # Lets yt-dlp download its EJS challenge-solver script from GitHub
-        # at runtime, needed to decrypt YouTube's "n challenge" signatures.
-        # Without this, yt-dlp can list formats but can't resolve real
-        # download URLs for any of them - which is exactly the "Requested
-        # format is not available" / "Only images are available" failure
-        # we were hitting even with cookies and Deno both working.
+        # remote_components lets yt-dlp fetch its EJS challenge-solver
+        # script at runtime - required to decrypt YouTube's "n challenge"
+        # signatures and actually resolve real format URLs. Confirmed
+        # working - keep this.
         "remote_components": {"ejs:github"},
-        # TEMPORARY: verbose debug logging, since Shell isn't available on
-        # the Free plan. Flip quiet/no_warnings back to True and remove
-        # verbose once this is confirmed working - this output is noisy
-        # and not meant to run permanently in production.
-        "quiet": False,
-        "no_warnings": False,
-        "verbose": True,
+        "quiet": True,
+        "no_warnings": True,
         "noplaylist": True,
     }
     cookiefile = _writable_cookiefile()
@@ -56,7 +54,9 @@ def download_video(url: str) -> Path:
         print("[downloader] No cookie file found - downloading without authentication")
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
+        # extract_info with download=True returns the final, post-processed info dict
         path = Path(ydl.prepare_filename(info))
+        # merge_output_format may change extension to .mp4 after postprocessing
         if not path.exists():
             path = path.with_suffix(".mp4")
     if not path.exists():
