@@ -1,254 +1,1509 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Groq Shorts Clipper</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Snipify — Turn Long Videos Into Viral Shorts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
 <style>
+  /* ── TOKENS ─────────────────────────────────────────────── */
   :root {
-    --bg: #0f1115;
-    --card: #1a1d24;
-    --accent: #6c5ce7;
-    --accent2: #00d2a0;
-    --text: #e7e9ee;
-    --muted: #8a8f9c;
+    --bg:        #0A0A0F;
+    --bg2:       #111118;
+    --bg3:       #18181F;
+    --border:    rgba(255,255,255,0.08);
+    --violet:    #7C3AED;
+    --violet-lt: #9F67FF;
+    --cyan:      #06B6D4;
+    --cyan-lt:   #38D9F5;
+    --text:      #F1F0F5;
+    --muted:     #8B8A99;
+    --card-bg:   rgba(255,255,255,0.04);
+    --radius:    14px;
+    --radius-lg: 22px;
+    --font-disp: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
   }
-  * { box-sizing: border-box; }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
   body {
-    margin: 0;
-    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    display: flex;
-    justify-content: center;
-    padding: 40px 16px;
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
   }
-  .wrap { max-width: 640px; width: 100%; }
-  h1 { font-size: 1.5rem; margin-bottom: 4px; }
-  p.sub { color: var(--muted); margin-top: 0; margin-bottom: 28px; }
-  .card {
-    background: var(--card);
-    border-radius: 14px;
-    padding: 24px;
-    margin-bottom: 20px;
-    border: 1px solid #262a33;
-  }
-  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
-  input[type="text"], select {
-    width: 100%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid #2c313c;
-    background: #11141a;
-    color: var(--text);
-    font-size: 0.95rem;
-    margin-bottom: 18px;
-  }
-  input[type="text"]:focus, select:focus { outline: none; border-color: var(--accent); }
 
-  .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-  .toggle-row span { font-size: 0.95rem; }
-  .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute; cursor: pointer; inset: 0;
-    background: #2c313c; border-radius: 999px; transition: .2s;
+  /* ── NOISE TEXTURE OVERLAY ──────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
   }
-  .slider:before {
-    content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
-    background: white; border-radius: 50%; transition: .2s;
-  }
-  input:checked + .slider { background: var(--accent); }
-  input:checked + .slider:before { transform: translateX(20px); }
 
-  button {
+  /* ── NAV ────────────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 48px;
+    background: rgba(10,10,15,0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--font-disp);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .logo-mark {
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, var(--violet), var(--cyan));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .logo-text { background: linear-gradient(90deg, var(--text), var(--muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .nav-links { display: flex; align-items: center; gap: 32px; }
+
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    background: linear-gradient(135deg, var(--violet), var(--cyan)) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── HERO ───────────────────────────────────────────────── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    overflow: hidden;
+  }
+
+  /* THE SIGNATURE: sweeping gradient beam */
+  .hero-beam {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 900px; height: 900px;
+    transform: translate(-50%, -55%);
+    background: conic-gradient(from 0deg at 50% 50%,
+      transparent 0deg,
+      rgba(124,58,237,0.18) 60deg,
+      rgba(6,182,212,0.12) 120deg,
+      transparent 180deg,
+      rgba(124,58,237,0.1) 240deg,
+      transparent 360deg
+    );
+    border-radius: 50%;
+    animation: beam-spin 12s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes beam-spin {
+    from { transform: translate(-50%, -55%) rotate(0deg); }
+    to   { transform: translate(-50%, -55%) rotate(360deg); }
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: 20%; left: 50%;
+    width: 600px; height: 300px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%);
+    pointer-events: none;
+    filter: blur(40px);
+  }
+
+  .hero-glow-2 {
+    position: absolute;
+    top: 30%; left: 50%;
+    width: 400px; height: 200px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(6,182,212,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    filter: blur(60px);
+  }
+
+  .hero-content { position: relative; z-index: 2; max-width: 760px; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.3);
+    color: var(--violet-lt);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 28px;
+    letter-spacing: 0.02em;
+  }
+
+  .eyebrow-dot {
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  h1 {
+    font-family: var(--font-disp);
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -2px;
+    margin-bottom: 22px;
+  }
+
+  h1 .gradient-word {
+    background: linear-gradient(135deg, var(--violet-lt) 0%, var(--cyan-lt) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 18px;
+    max-width: 520px;
+    margin: 0 auto 48px;
+    line-height: 1.7;
+  }
+
+  /* ── URL INPUT CARD ─────────────────────────────────────── */
+  .input-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 6px 6px 6px 20px;
+    display: flex; align-items: center; gap: 12px;
+    max-width: 620px;
     width: 100%;
-    padding: 14px;
+    margin: 0 auto 16px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .input-card:focus-within {
+    border-color: rgba(124,58,237,0.5);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.1), 0 0 40px rgba(124,58,237,0.08);
+  }
+
+  .input-icon {
+    color: var(--muted);
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+  }
+
+  .url-input {
+    flex: 1;
+    background: none;
     border: none;
-    border-radius: 10px;
-    background: var(--accent);
-    color: white;
-    font-size: 1rem;
+    outline: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 10px 0;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--violet) 0%, #5B21B6 50%, var(--cyan) 150%);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-disp);
+    font-size: 15px;
     font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 10px;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-primary:hover { opacity: 0.88; transform: scale(1.02); }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .hero-hint {
+    color: var(--muted);
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .hint-item { display: flex; align-items: center; gap: 5px; }
+  .hint-check { color: var(--cyan); font-size: 12px; }
+
+  /* ── SOCIAL PROOF STRIP ─────────────────────────────────── */
+  .proof-strip {
+    position: relative; z-index: 2;
+    margin-top: 80px;
+    display: flex; align-items: center; justify-content: center; gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .proof-item { text-align: center; }
+  .proof-number {
+    font-family: var(--font-disp);
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--text), var(--muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .proof-label { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .proof-divider { width: 1px; height: 40px; background: var(--border); }
+
+  /* ── HOW IT WORKS ───────────────────────────────────────── */
+  section { position: relative; z-index: 2; }
+
+  .section-how {
+    padding: 100px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--violet-lt);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: var(--font-disp);
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 64px;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2px;
+    background: var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .step-card {
+    background: var(--bg2);
+    padding: 40px 36px;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .step-card:hover { background: var(--bg3); }
+
+  .step-number {
+    font-family: var(--font-disp);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--violet-lt);
+    margin-bottom: 20px;
+    opacity: 0.7;
+  }
+
+  .step-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .step-icon-1 { background: rgba(124,58,237,0.15); }
+  .step-icon-2 { background: rgba(6,182,212,0.12); }
+  .step-icon-3 { background: rgba(124,58,237,0.1); }
+  .step-icon-4 { background: rgba(6,182,212,0.15); }
+
+  .step-title {
+    font-family: var(--font-disp);
+    font-size: 19px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+
+  .step-desc { color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+  /* ── OPTIONS / CLIP SETTINGS SECTION ───────────────────── */
+  .section-options {
+    padding: 100px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .options-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+  }
+
+  .panel-title {
+    font-family: var(--font-disp);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 28px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .panel-title-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--violet), var(--cyan));
+  }
+
+  .option-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .option-row:last-child { border-bottom: none; }
+
+  .option-label { font-size: 14px; color: var(--text); }
+  .option-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Toggle */
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: linear-gradient(90deg, var(--violet), var(--cyan)); border-color: transparent; }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* Select */
+  .select-wrap { position: relative; }
+  .styled-select {
+    appearance: none;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 8px 32px 8px 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .styled-select:focus { border-color: rgba(124,58,237,0.4); }
+  .select-arrow {
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  /* Clip count bubbles */
+  .count-bubbles { display: flex; gap: 6px; }
+  .bubble {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bubble:hover { border-color: var(--violet); color: var(--violet-lt); }
+  .bubble.active {
+    background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(6,182,212,0.2));
+    border-color: var(--violet-lt);
+    color: var(--text);
+  }
+
+  /* Preview panel */
+  .preview-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .preview-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .preview-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pd-r { background: #FF5F57; }
+  .pd-y { background: #FFBD2E; }
+  .pd-g { background: #28CA41; }
+
+  .preview-title { font-size: 13px; color: var(--muted); margin-left: 6px; }
+
+  .preview-video-mock {
+    aspect-ratio: 9/16;
+    max-height: 360px;
+    background: var(--bg3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .video-grad {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg,
+      rgba(124,58,237,0.08) 0%,
+      rgba(6,182,212,0.05) 50%,
+      transparent 100%);
+  }
+
+  .play-btn {
+    width: 56px; height: 56px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    position: relative; z-index: 1;
+  }
+  .play-btn:hover { background: rgba(124,58,237,0.3); transform: scale(1.08); }
+
+  .caption-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 16px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    z-index: 1;
+  }
+
+  .caption-line {
+    display: inline-block;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    color: #fff;
+    font-family: var(--font-disp);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.01em;
+  }
+
+  .preview-meta {
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .preview-tag {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  .preview-tag-accent {
+    font-size: 12px;
+    color: var(--violet-lt);
+    background: rgba(124,58,237,0.1);
+    border: 1px solid rgba(124,58,237,0.2);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  /* ── FEATURES ───────────────────────────────────────────── */
+  .section-features {
+    padding: 100px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(124,58,237,0.3);
+    transform: translateY(-2px);
+  }
+
+  .feature-emoji { font-size: 24px; margin-bottom: 16px; }
+  .feature-name {
+    font-family: var(--font-disp);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: -0.2px;
+  }
+  .feature-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ── CTA BANNER ─────────────────────────────────────────── */
+  .cta-banner {
+    margin: 60px 24px 100px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    background: linear-gradient(135deg,
+      rgba(124,58,237,0.15) 0%,
+      rgba(6,182,212,0.08) 100%);
+    border: 1px solid rgba(124,58,237,0.2);
+    border-radius: var(--radius-lg);
+    padding: 64px 48px;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .cta-banner::before {
+    content: '';
+    position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(124,58,237,0.06), transparent, rgba(6,182,212,0.04), transparent);
+    animation: beam-spin 20s linear infinite;
+    pointer-events: none;
+  }
+
+  .cta-banner h2 {
+    font-family: var(--font-disp);
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    position: relative; z-index: 1;
+  }
+
+  .cta-banner p {
+    color: var(--muted);
+    font-size: 16px;
+    margin-bottom: 36px;
+    position: relative; z-index: 1;
+  }
+
+  .cta-input-row {
+    display: flex; gap: 12px; justify-content: center;
+    flex-wrap: wrap;
+    position: relative; z-index: 1;
+  }
+
+  .cta-input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 13px 18px;
+    width: 320px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .cta-input:focus { border-color: rgba(124,58,237,0.4); }
+  .cta-input::placeholder { color: var(--muted); }
+
+  /* ── FOOTER ─────────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; z-index: 2;
+    flex-wrap: wrap; gap: 16px;
+  }
+
+  .footer-copy { font-size: 13px; color: var(--muted); }
+
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--text); }
+
+  /* ── APP SCREEN (shown after submit) ────────────────────── */
+  .app-screen {
+    display: none;
+    min-height: 100vh;
+    padding-top: 72px;
+  }
+
+  .app-screen.visible { display: block; }
+  .hero.hidden { display: none; }
+
+  .app-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 72px);
+  }
+
+  .app-sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 32px 24px;
+    overflow-y: auto;
+  }
+
+  .app-main {
+    padding: 40px 48px;
+    overflow-y: auto;
+  }
+
+  .sidebar-section { margin-bottom: 32px; }
+  .sidebar-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .url-display {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    word-break: break-all;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+
+  .url-display-icon { flex-shrink: 0; margin-top: 1px; color: var(--violet-lt); }
+
+  .sidebar-option { margin-bottom: 16px; }
+  .sidebar-option label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .sidebar-option .styled-select { width: 100%; }
+
+  .sidebar-toggles { display: flex; flex-direction: column; gap: 14px; }
+
+  .sidebar-toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .sidebar-toggle-label { font-size: 13px; color: var(--text); }
+
+  .btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, var(--violet) 0%, var(--cyan) 100%);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-disp);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px;
+    border-radius: 10px;
+    transition: opacity 0.2s, transform 0.15s;
+    margin-top: 8px;
+  }
+  .btn-generate:hover { opacity: 0.9; }
+  .btn-generate:active { transform: scale(0.99); }
+
+  .btn-back {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    margin-top: 12px;
+    width: 100%;
+  }
+  .btn-back:hover { border-color: var(--muted); color: var(--text); }
+
+  .app-title {
+    font-family: var(--font-disp);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+
+  .app-subtitle { font-size: 14px; color: var(--muted); margin-bottom: 40px; }
+
+  /* Progress */
+  .progress-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 32px;
+  }
+
+  .progress-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .progress-stage {
+    font-family: var(--font-disp);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .progress-pct {
+    font-size: 13px;
+    color: var(--cyan);
+    font-weight: 600;
+  }
+
+  .progress-bar-wrap {
+    background: var(--bg3);
+    border-radius: 100px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    border-radius: 100px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+
+  .progress-stages { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .stage-chip {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    background: var(--bg3);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .stage-chip.active {
+    background: rgba(124,58,237,0.15);
+    color: var(--violet-lt);
+    border-color: rgba(124,58,237,0.3);
+  }
+
+  .stage-chip.done {
+    background: rgba(6,182,212,0.1);
+    color: var(--cyan);
+    border-color: rgba(6,182,212,0.2);
+  }
+
+  /* Clips results grid */
+  .clips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .clip-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
     cursor: pointer;
   }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  button:hover:not(:disabled) { background: #5b4bd6; }
 
-  #status { display: none; }
-  #stage { font-weight: 600; margin-bottom: 8px; }
-  #log {
-    background: #11141a;
-    border-radius: 10px;
-    padding: 12px 14px;
-    font-family: monospace;
-    font-size: 0.8rem;
+  .clip-card:hover {
+    border-color: rgba(124,58,237,0.35);
+    transform: translateY(-3px);
+  }
+
+  .clip-thumb {
+    aspect-ratio: 9/16;
+    background: var(--bg3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .clip-thumb-grad {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(6,182,212,0.06));
+  }
+
+  .clip-play {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    position: relative; z-index: 1;
+  }
+
+  .clip-caption-mock {
+    position: absolute; bottom: 10px; left: 0; right: 0;
+    text-align: center;
+    font-family: var(--font-disp);
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--violet-lt), var(--cyan-lt));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    z-index: 1;
+  }
+
+  .clip-info { padding: 12px 14px; }
+  .clip-duration {
+    font-size: 12px;
     color: var(--muted);
-    max-height: 220px;
-    overflow-y: auto;
-    white-space: pre-wrap;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 4px;
   }
-  .results { display: none; margin-top: 18px; }
-  .clip {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 14px;
-    background: #11141a;
-    border-radius: 10px;
-    margin-bottom: 10px;
+
+  .clip-download {
+    width: 100%;
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.2);
+    color: var(--violet-lt);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.2s;
   }
-  .clip .hook { font-size: 0.9rem; color: var(--text); }
-  .clip a {
-    color: var(--accent2);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.85rem;
+  .clip-download:hover { background: rgba(124,58,237,0.22); }
+
+  /* ── RESPONSIVE ─────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    nav { padding: 14px 20px; }
+    .nav-links { display: none; }
+
+    .options-grid { grid-template-columns: 1fr; }
+
+    .app-layout { grid-template-columns: 1fr; }
+    .app-sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    .app-main { padding: 24px 16px; }
+
+    .input-card { flex-direction: column; padding: 12px; }
+    .btn-primary { width: 100%; text-align: center; }
+
+    footer { flex-direction: column; align-items: flex-start; }
+    .proof-divider { display: none; }
+    .cta-banner { padding: 40px 24px; }
+    .cta-input { width: 100%; }
   }
-  .error { color: #ff6b6b; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-beam, .cta-banner::before { animation: none; }
+    .eyebrow-dot { animation: none; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🎬 Groq Shorts Clipper</h1>
-  <p class="sub">Paste a YouTube link, pick your options, get vertical clips.</p>
 
-  <div class="card">
-    <label for="url">YouTube URL</label>
-    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=...">
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo" onclick="showLanding()">
+    <div class="logo-mark">✂</div>
+    <span class="logo-text">Snipify</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#" class="nav-cta">Try for free →</a>
+  </div>
+</nav>
 
-    <label for="length">Clip length</label>
-    <select id="length"></select>
+<!-- ═══════════════════════════════════════════════════════════
+     LANDING PAGE
+═══════════════════════════════════════════════════════════ -->
+<div id="landing-page">
 
-    <label for="num_clips">Number of clips</label>
-    <select id="num_clips">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3" selected>3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-    </select>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-beam"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-glow-2"></div>
 
-    <div class="toggle-row">
-      <span>Add hook text overlay</span>
-      <label class="switch">
-        <input type="checkbox" id="add_hook" checked>
-        <span class="slider"></span>
-      </label>
+    <div class="hero-content">
+      <div class="eyebrow">
+        <div class="eyebrow-dot"></div>
+        AI-powered clip generation
+      </div>
+
+      <h1>
+        Turn any long video<br />into <span class="gradient-word">viral shorts</span>
+      </h1>
+
+      <p class="hero-sub">
+        Paste a YouTube link. Snipify's AI finds the best moments, reframes for 9:16, burns in captions, and hands you clips ready to post.
+      </p>
+
+      <!-- URL input -->
+      <div class="input-card" id="hero-input-card">
+        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+        </svg>
+        <input class="url-input" id="hero-url" type="url" placeholder="Paste YouTube link here…" />
+        <button class="btn-primary" onclick="goToApp()">Generate Clips →</button>
+      </div>
+
+      <div class="hero-hint">
+        <span class="hint-item"><span class="hint-check">✦</span> No account needed</span>
+        <span class="hint-item"><span class="hint-check">✦</span> Under 60 seconds</span>
+        <span class="hint-item"><span class="hint-check">✦</span> Vertical 9:16 output</span>
+      </div>
     </div>
 
-    <div class="toggle-row">
-      <span>Add burned-in captions</span>
-      <label class="switch">
-        <input type="checkbox" id="add_captions" checked>
-        <span class="slider"></span>
-      </label>
+    <!-- Stats -->
+    <div class="proof-strip">
+      <div class="proof-item">
+        <div class="proof-number">2.4M+</div>
+        <div class="proof-label">Clips generated</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-item">
+        <div class="proof-number">97%</div>
+        <div class="proof-label">Caption accuracy</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-item">
+        <div class="proof-number">45s</div>
+        <div class="proof-label">Average processing</div>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-item">
+        <div class="proof-number">3 platforms</div>
+        <div class="proof-label">TikTok, Reels, Shorts</div>
+      </div>
     </div>
+  </section>
 
-    <div class="toggle-row">
-      <span>Vertical 9:16 output</span>
-      <label class="switch">
-        <input type="checkbox" id="vertical" checked>
-        <span class="slider"></span>
-      </label>
+  <!-- HOW IT WORKS -->
+  <section class="section-how" id="how">
+    <div class="section-label">Process</div>
+    <h2 class="section-title">From full video to viral clip<br />in four steps</h2>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <div class="step-icon step-icon-1">🔗</div>
+        <div class="step-title">Paste your link</div>
+        <p class="step-desc">Drop any YouTube URL. Podcasts, interviews, lectures, vlogs — Snipify handles any format up to 3 hours long.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <div class="step-icon step-icon-2">🧠</div>
+        <div class="step-title">AI finds the moments</div>
+        <p class="step-desc">Groq-powered transcription reads the full video. Our model scores every segment for hook strength, energy, and shareability.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <div class="step-icon step-icon-3">✂️</div>
+        <div class="step-title">Clips are cut & reframed</div>
+        <p class="step-desc">Each clip is trimmed, auto-cropped to 9:16, and optionally gets burned-in captions with your choice of style.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">04</div>
+        <div class="step-icon step-icon-4">⬇️</div>
+        <div class="step-title">Download & post</div>
+        <p class="step-desc">Grab your clips as MP4s. Ready for TikTok, Instagram Reels, and YouTube Shorts with zero additional editing.</p>
+      </div>
     </div>
+  </section>
 
-    <button id="startBtn">Generate Clips</button>
+  <!-- CLIP OPTIONS PREVIEW -->
+  <section class="section-options">
+    <div class="section-label">Controls</div>
+    <h2 class="section-title">You set the rules,<br />the AI does the work</h2>
+
+    <div class="options-grid">
+      <div class="options-panel">
+        <div class="panel-title">
+          <div class="panel-title-dot"></div>
+          Clip settings
+        </div>
+
+        <div class="option-row">
+          <div>
+            <div class="option-label">Clip length</div>
+            <div class="option-sub">Target duration per clip</div>
+          </div>
+          <div class="select-wrap">
+            <select class="styled-select">
+              <option>30 seconds</option>
+              <option>45 seconds</option>
+              <option selected>60 seconds</option>
+              <option>90 seconds</option>
+            </select>
+            <span class="select-arrow">▾</span>
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div>
+            <div class="option-label">Number of clips</div>
+            <div class="option-sub">How many to generate</div>
+          </div>
+          <div class="count-bubbles">
+            <div class="bubble">1</div>
+            <div class="bubble">2</div>
+            <div class="bubble active">3</div>
+            <div class="bubble">5</div>
+          </div>
+        </div>
+
+        <div class="option-row">
+          <div>
+            <div class="option-label">Burned-in captions</div>
+            <div class="option-sub">Adds styled word-by-word text</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="option-row">
+          <div>
+            <div class="option-label">Hook text overlay</div>
+            <div class="option-sub">AI-written hook at the top</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="option-row">
+          <div>
+            <div class="option-label">Vertical 9:16 crop</div>
+            <div class="option-sub">Auto-reframe for mobile</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+      </div>
+
+      <div class="preview-panel">
+        <div class="preview-header">
+          <div class="preview-dot pd-r"></div>
+          <div class="preview-dot pd-y"></div>
+          <div class="preview-dot pd-g"></div>
+          <span class="preview-title">clip_01_preview.mp4</span>
+        </div>
+        <div class="preview-video-mock">
+          <div class="video-grad"></div>
+          <div class="play-btn">▶</div>
+          <div class="caption-overlay">
+            <span class="caption-line">This changed everything for me</span>
+          </div>
+        </div>
+        <div class="preview-meta">
+          <span class="preview-tag">00:32 — 01:04</span>
+          <span class="preview-tag-accent">Score: 94 / 100</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section-features" id="features">
+    <div class="section-label">What's inside</div>
+    <h2 class="section-title">Everything you need.<br />Nothing you don't.</h2>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-emoji">⚡</div>
+        <div class="feature-name">Groq-speed transcription</div>
+        <p class="feature-desc">Whisper via Groq processes a 1-hour video in under 30 seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-emoji">🎯</div>
+        <div class="feature-name">Virality scoring</div>
+        <p class="feature-desc">Each clip gets a score based on hook strength, pacing, and quotability.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-emoji">📱</div>
+        <div class="feature-name">Auto 9:16 reframe</div>
+        <p class="feature-desc">Face detection keeps speakers centered in the vertical crop automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-emoji">💬</div>
+        <div class="feature-name">Word-by-word captions</div>
+        <p class="feature-desc">Styled captions burned into the video — no separate editing step.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-emoji">🪝</div>
+        <div class="feature-name">AI hook generator</div>
+        <p class="feature-desc">Gemini writes a punchy hook overlay based on each clip's content.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-emoji">📥</div>
+        <div class="feature-name">Instant MP4 download</div>
+        <p class="feature-desc">Clips are ready to upload directly to TikTok, Reels, or Shorts.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BANNER -->
+  <div class="cta-banner">
+    <h2>Ready to clip smarter?</h2>
+    <p>Paste a link and have your first clip in under a minute.</p>
+    <div class="cta-input-row">
+      <input class="cta-input" id="cta-url" type="url" placeholder="youtube.com/watch?v=…" />
+      <button class="btn-primary" onclick="goToAppFromCTA()">Generate Clips →</button>
+    </div>
   </div>
 
-  <div class="card" id="status">
-    <div id="stage">Starting...</div>
-    <div id="log"></div>
-  </div>
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-copy">© 2026 Snipify. Built for creators.</div>
+    <div class="footer-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">GitHub</a>
+    </div>
+  </footer>
 
-  <div class="card results" id="results"></div>
+</div><!-- /landing-page -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="app-page" class="app-screen">
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="app-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Source video</div>
+        <div class="url-display" id="sidebar-url">
+          <span class="url-display-icon">🔗</span>
+          <span id="url-display-text">—</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Clip settings</div>
+
+        <div class="sidebar-option">
+          <label>Clip length</label>
+          <div class="select-wrap">
+            <select class="styled-select" id="app-length">
+              <option>15 seconds</option>
+              <option>30 seconds</option>
+              <option selected>60 seconds</option>
+              <option>90 seconds</option>
+            </select>
+            <span class="select-arrow">▾</span>
+          </div>
+        </div>
+
+        <div class="sidebar-option">
+          <label>Number of clips</label>
+          <div class="count-bubbles" id="app-count-bubbles">
+            <div class="bubble" onclick="selectBubble(this)">1</div>
+            <div class="bubble active" onclick="selectBubble(this)">3</div>
+            <div class="bubble" onclick="selectBubble(this)">5</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Enhancements</div>
+        <div class="sidebar-toggles">
+          <div class="sidebar-toggle-row">
+            <span class="sidebar-toggle-label">Burned-in captions</span>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="sidebar-toggle-row">
+            <span class="sidebar-toggle-label">Hook text overlay</span>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="sidebar-toggle-row">
+            <span class="sidebar-toggle-label">Vertical 9:16</span>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-generate" onclick="startGeneration()">✂ Generate Clips</button>
+      <button class="btn-back" onclick="showLanding()">← Back to home</button>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <main class="app-main">
+      <!-- idle state -->
+      <div id="app-idle">
+        <div class="app-title">Ready when you are</div>
+        <p class="app-subtitle">Adjust your settings and hit Generate Clips to start.</p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;">
+          <div class="feature-card" style="flex:1;min-width:200px;">
+            <div class="feature-emoji">🧠</div>
+            <div class="feature-name">AI transcription</div>
+            <p class="feature-desc">Groq Whisper reads the entire video in seconds.</p>
+          </div>
+          <div class="feature-card" style="flex:1;min-width:200px;">
+            <div class="feature-emoji">🎯</div>
+            <div class="feature-name">Smart selection</div>
+            <p class="feature-desc">Only the best moments get clipped and scored.</p>
+          </div>
+          <div class="feature-card" style="flex:1;min-width:200px;">
+            <div class="feature-emoji">📥</div>
+            <div class="feature-name">Instant download</div>
+            <p class="feature-desc">MP4s ready for TikTok, Reels, and Shorts.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- processing state -->
+      <div id="app-processing" style="display:none;">
+        <div class="app-title">Generating your clips…</div>
+        <p class="app-subtitle">This usually takes 30–90 seconds depending on video length.</p>
+
+        <div class="progress-card">
+          <div class="progress-header">
+            <span class="progress-stage" id="progress-stage-label">Downloading video</span>
+            <span class="progress-pct" id="progress-pct">0%</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-bar"></div>
+          </div>
+          <div class="progress-stages">
+            <span class="stage-chip active" id="chip-download">1. Download</span>
+            <span class="stage-chip" id="chip-transcribe">2. Transcribe</span>
+            <span class="stage-chip" id="chip-select">3. Select moments</span>
+            <span class="stage-chip" id="chip-render">4. Render clips</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- results state -->
+      <div id="app-results" style="display:none;">
+        <div class="app-title">Your clips are ready 🎉</div>
+        <p class="app-subtitle">3 clips generated · Click to preview, then download.</p>
+
+        <div class="clips-grid">
+          <!-- clip 1 -->
+          <div class="clip-card">
+            <div class="clip-thumb">
+              <div class="clip-thumb-grad"></div>
+              <div class="clip-play">▶</div>
+              <div class="clip-caption-mock">This changed everything</div>
+            </div>
+            <div class="clip-info">
+              <div class="clip-duration">⏱ 0:32 — 1:04</div>
+              <button class="clip-download">⬇ Download MP4</button>
+            </div>
+          </div>
+          <!-- clip 2 -->
+          <div class="clip-card">
+            <div class="clip-thumb" style="background:linear-gradient(135deg,#18182a,#0e1a20);">
+              <div class="clip-thumb-grad"></div>
+              <div class="clip-play">▶</div>
+              <div class="clip-caption-mock">Nobody talks about this</div>
+            </div>
+            <div class="clip-info">
+              <div class="clip-duration">⏱ 4:17 — 5:21</div>
+              <button class="clip-download">⬇ Download MP4</button>
+            </div>
+          </div>
+          <!-- clip 3 -->
+          <div class="clip-card">
+            <div class="clip-thumb" style="background:linear-gradient(135deg,#120e1a,#0a1818);">
+              <div class="clip-thumb-grad"></div>
+              <div class="clip-play">▶</div>
+              <div class="clip-caption-mock">The real reason why</div>
+            </div>
+            <div class="clip-info">
+              <div class="clip-duration">⏱ 11:44 — 12:52</div>
+              <button class="clip-download">⬇ Download MP4</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
 </div>
 
 <script>
-  const lengthSelect = document.getElementById('length');
-  for (let s = 15; s <= 60; s += 5) {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s + ' seconds';
-    if (s === 30) opt.selected = true;
-    lengthSelect.appendChild(opt);
-  }
+  // ── STATE ─────────────────────────────────────────────────
+  let currentUrl = '';
 
-  const startBtn = document.getElementById('startBtn');
-  const statusBox = document.getElementById('status');
-  const stageEl = document.getElementById('stage');
-  const logEl = document.getElementById('log');
-  const resultsBox = document.getElementById('results');
-
-  let pollTimer = null;
-
-  startBtn.addEventListener('click', async () => {
-    const url = document.getElementById('url').value.trim();
-    if (!url) { alert('Please paste a YouTube URL.'); return; }
-
-    startBtn.disabled = true;
-    statusBox.style.display = 'block';
-    resultsBox.style.display = 'none';
-    resultsBox.innerHTML = '';
-    logEl.textContent = '';
-    stageEl.textContent = 'Starting...';
-
-    const payload = {
-      url,
-      clip_length: parseInt(document.getElementById('length').value, 10),
-      num_clips: parseInt(document.getElementById('num_clips').value, 10),
-      add_hook: document.getElementById('add_hook').checked,
-      add_captions: document.getElementById('add_captions').checked,
-      vertical: document.getElementById('vertical').checked,
-    };
-
-    const res = await fetch('/api/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.error) {
-      stageEl.textContent = 'Error';
-      logEl.innerHTML = `<span class="error">${data.error}</span>`;
-      startBtn.disabled = false;
+  // ── NAVIGATION ────────────────────────────────────────────
+  function goToApp() {
+    const url = document.getElementById('hero-url').value.trim();
+    if (!url) {
+      document.getElementById('hero-input-card').style.borderColor = 'rgba(239,68,68,0.5)';
+      setTimeout(() => document.getElementById('hero-input-card').style.borderColor = '', 1200);
       return;
     }
-    poll(data.job_id);
-  });
-
-  function poll(jobId) {
-    pollTimer = setInterval(async () => {
-      const res = await fetch(`/api/status/${jobId}`);
-      const job = await res.json();
-
-      stageEl.textContent = 'Stage: ' + job.stage;
-      logEl.textContent = job.log.join('\n');
-      logEl.scrollTop = logEl.scrollHeight;
-
-      if (job.status === 'done') {
-        clearInterval(pollTimer);
-        startBtn.disabled = false;
-        renderResults(job.results);
-      } else if (job.status === 'error') {
-        clearInterval(pollTimer);
-        startBtn.disabled = false;
-        logEl.innerHTML += `\n<span class="error">ERROR: ${job.error}</span>`;
-      }
-    }, 1500);
+    launchApp(url);
   }
 
-  function renderResults(results) {
-    resultsBox.style.display = 'block';
-    resultsBox.innerHTML = '<h3 style="margin-top:0;">Done! Your clips:</h3>';
-    results.forEach((r, i) => {
-      const div = document.createElement('div');
-      div.className = 'clip';
-      div.innerHTML = `
-        <span class="hook">#${i + 1} — "${r.hook}"</span>
-        <a href="/output/${r.filename}" download>Download</a>
-      `;
-      resultsBox.appendChild(div);
+  function goToAppFromCTA() {
+    const url = document.getElementById('cta-url').value.trim();
+    if (!url) return;
+    launchApp(url);
+  }
+
+  function launchApp(url) {
+    currentUrl = url;
+    document.getElementById('url-display-text').textContent = url;
+    document.getElementById('landing-page').style.display = 'none';
+    document.getElementById('app-page').classList.add('visible');
+    window.scrollTo(0, 0);
+  }
+
+  function showLanding() {
+    document.getElementById('landing-page').style.display = 'block';
+    document.getElementById('app-page').classList.remove('visible');
+    resetApp();
+    window.scrollTo(0, 0);
+  }
+
+  // ── BUBBLE SELECT ─────────────────────────────────────────
+  function selectBubble(el) {
+    el.closest('.count-bubbles').querySelectorAll('.bubble').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // ── GENERATION DEMO ───────────────────────────────────────
+  function startGeneration() {
+    document.getElementById('app-idle').style.display = 'none';
+    document.getElementById('app-results').style.display = 'none';
+    document.getElementById('app-processing').style.display = 'block';
+
+    const stages = [
+      { label: 'Downloading video',    pct: 20, chip: 'chip-download'    },
+      { label: 'Transcribing audio',   pct: 45, chip: 'chip-transcribe'  },
+      { label: 'Selecting moments',    pct: 70, chip: 'chip-select'      },
+      { label: 'Rendering clips',      pct: 90, chip: 'chip-render'      },
+      { label: 'Finalizing…',          pct: 100, chip: null               },
+    ];
+
+    let i = 0;
+    const bar = document.getElementById('progress-bar');
+    const stageLabel = document.getElementById('progress-stage-label');
+    const pctLabel = document.getElementById('progress-pct');
+
+    function advance() {
+      if (i >= stages.length) {
+        // show results
+        document.getElementById('app-processing').style.display = 'none';
+        document.getElementById('app-results').style.display = 'block';
+        return;
+      }
+      const s = stages[i];
+      bar.style.width = s.pct + '%';
+      stageLabel.textContent = s.label;
+      pctLabel.textContent = s.pct + '%';
+
+      // mark chip states
+      if (s.chip) {
+        document.getElementById(s.chip).classList.add('active');
+        if (i > 0) {
+          document.getElementById(stages[i-1].chip || '')?.classList.replace('active','done');
+        }
+      }
+
+      i++;
+      const delay = i === stages.length ? 600 : 1400;
+      setTimeout(advance, delay);
+    }
+
+    advance();
+  }
+
+  function resetApp() {
+    document.getElementById('app-idle').style.display = 'block';
+    document.getElementById('app-processing').style.display = 'none';
+    document.getElementById('app-results').style.display = 'none';
+    document.getElementById('progress-bar').style.width = '0%';
+    ['chip-download','chip-transcribe','chip-select','chip-render'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('active','done');
     });
+    document.getElementById('chip-download').classList.add('active');
   }
 </script>
 </body>
